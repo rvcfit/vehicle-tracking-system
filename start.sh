@@ -4,7 +4,7 @@
 #  Copyright (c) 2024 - Enterprise Grade Microservices Project
 #===============================================================================
 
-
+set -e
 
 # Colors
 RED='\033[0;31m'
