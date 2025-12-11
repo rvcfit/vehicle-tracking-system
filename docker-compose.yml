@@ -1,0 +1,425 @@
+#===============================================================================
+#  Vehicle Tracking System - Docker Compose Configuration
+#  Copyright (c) 2024 - Enterprise Grade Microservices Project
+#===============================================================================
+#
+#  Architecture:
+#    Flask Client → Artemis (JMS) → JMS Bridge → RabbitMQ → Consumers → MongoDB
+#                                       ↓
+#                                    MongoDB
+#
+#  Monitoring:
+#    Prometheus ← All Services → Grafana
+#
+#===============================================================================
+
+version: '3.8'
+
+services:
+  #=============================================================================
+  # MESSAGE BROKER: ActiveMQ Artemis (JMS 1.1/2.0, AMQP, MQTT, STOMP)
+  #=============================================================================
+  artemis:
+    build:
+      context: .
+      dockerfile: artemis/Dockerfile
+    container_name: vehicle-tracking-artemis
+    hostname: artemis
+    ports:
+      - "${ARTEMIS_CONSOLE_PORT:-8161}:8161"   # Web Console
+      - "${ARTEMIS_PORT:-61616}:61616"         # Core/OpenWire
+      - "5672:5672"                            # AMQP
+      - "61613:61613"                          # STOMP
+      - "1883:1883"                            # MQTT
+    environment:
+      - ARTEMIS_USER=${ARTEMIS_USER:-admin}
+      - ARTEMIS_PASSWORD=${ARTEMIS_PASSWORD:-admin}
+    volumes:
+      - artemis-data:/opt/artemis-instance/data
+      - artemis-logs:/opt/artemis-instance/log
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8161/console || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  #=============================================================================
+  # MESSAGE BACKEND: RabbitMQ (AMQP Broker)
+  #=============================================================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: vehicle-tracking-rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "${RABBITMQ_EXTERNAL_PORT:-5673}:5672"          # AMQP
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"     # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-admin}
+      - RABBITMQ_DEFAULT_VHOST=/
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  #=============================================================================
+  # DATABASE: MongoDB
+  #=============================================================================
+  mongodb:
+    image: mongo:7
+    container_name: vehicle-tracking-mongodb
+    hostname: mongodb
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-admin123}
+      - MONGO_INITDB_DATABASE=${MONGODB_DATABASE:-vehicle_tracking}
+    volumes:
+      - mongodb-data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  #=============================================================================
+  # JMS BRIDGE: Artemis → RabbitMQ
+  #=============================================================================
+  jms-bridge:
+    build:
+      context: .
+      dockerfile: jms-bridge/Dockerfile
+    container_name: vehicle-tracking-jms-bridge
+    hostname: jms-bridge
+    ports:
+      - "${JMS_BRIDGE_PORT:-8083}:8080"
+      - "9122:9122"                              # Prometheus metrics
+    environment:
+      # Spring Boot
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+      
+      # Artemis (JMS Source)
+      - ARTEMIS_BROKER_URL=tcp://artemis:61616
+      - ARTEMIS_USER=${ARTEMIS_USER:-admin}
+      - ARTEMIS_PASSWORD=${ARTEMIS_PASSWORD:-admin}
+      - JMS_QUEUE=vehicle.events
+      
+      # RabbitMQ (Target)
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER:-admin}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE:-vehicle-exchange}
+      - RABBITMQ_ROUTING_KEY=${RABBITMQ_ROUTING_KEY:-vehicle.events}
+      
+      # MongoDB
+      - SPRING_DATA_MONGODB_URI=${MONGODB_URI:-mongodb://admin:admin123@mongodb:27017/vehicle_tracking?authSource=admin}
+      
+      # JVM Options
+      - JAVA_OPTS=${JMS_BRIDGE_JAVA_OPTS:--Xms512m -Xmx1024m}
+    depends_on:
+      artemis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  #=============================================================================
+  # CONSUMER: Java (Spring Boot)
+  #=============================================================================
+  consumer-java:
+    build:
+      context: .
+      dockerfile: consumer-java/Dockerfile
+    container_name: vehicle-tracking-consumer-java
+    hostname: consumer-java
+    ports:
+      - "${CONSUMER_JAVA_PORT:-8081}:8080"
+      - "9123:9123"                              # Prometheus metrics
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+      
+      # RabbitMQ
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER:-admin}
+      - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-vehicle.events}
+      
+      # MongoDB
+      - SPRING_DATA_MONGODB_URI=${MONGODB_URI:-mongodb://admin:admin123@mongodb:27017/vehicle_tracking?authSource=admin}
+      
+      # JVM Options
+      - JAVA_OPTS=${CONSUMER_JAVA_OPTS:--Xms256m -Xmx512m}
+    depends_on:
+      - rabbitmq
+      - mongodb
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  #=============================================================================
+  # CONSUMER: Node.js
+  #=============================================================================
+  consumer-node:
+    build:
+      context: .
+      dockerfile: consumer-node/Dockerfile
+    container_name: vehicle-tracking-consumer-node
+    hostname: consumer-node
+    ports:
+      - "${CONSUMER_NODE_PORT:-3003}:3000"
+      - "9124:9124"                              # Prometheus metrics
+    environment:
+      - NODE_ENV=production
+      
+      # RabbitMQ
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-admin}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE:-vehicle.events}
+      
+      # MongoDB
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:admin123@mongodb:27017/vehicle_tracking?authSource=admin}
+    depends_on:
+      - rabbitmq
+      - mongodb
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  #=============================================================================
+  # CLIENT: Flask Web Application
+  #=============================================================================
+  client-flask:
+    build:
+      context: .
+      dockerfile: client-flask/Dockerfile
+    container_name: vehicle-tracking-client
+    hostname: client-flask
+    ports:
+      - "${CLIENT_FLASK_PORT:-5000}:5000"
+    environment:
+      - FLASK_ENV=production
+      - ARTEMIS_HOST=artemis
+      - ARTEMIS_PORT=61616
+      - ARTEMIS_USER=${ARTEMIS_USER:-admin}
+      - ARTEMIS_PASSWORD=${ARTEMIS_PASSWORD:-admin}
+      - ARTEMIS_QUEUE=vehicle.events
+    depends_on:
+      artemis:
+        condition: service_healthy
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  #=============================================================================
+  # DASHBOARD: Real-time Monitoring Dashboard
+  #=============================================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: client-flask/Dockerfile.dashboard
+    container_name: vehicle-tracking-dashboard
+    hostname: dashboard
+    ports:
+      - "${DASHBOARD_PORT:-5001}:5001"
+    environment:
+      - FLASK_ENV=production
+      - MONGODB_URI=${MONGODB_URI:-mongodb://admin:admin123@mongodb:27017/vehicle_tracking?authSource=admin}
+    depends_on:
+      - mongodb
+    networks:
+      - vehicle-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  #=============================================================================
+  # MONITORING: Prometheus
+  #=============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vehicle-tracking-prometheus
+    hostname: prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - vehicle-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  #=============================================================================
+  # MONITORING: Grafana
+  #=============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vehicle-tracking-grafana
+    hostname: grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:${GRAFANA_PORT:-3001}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - vehicle-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+#===============================================================================
+# VOLUMES
+#===============================================================================
+volumes:
+  artemis-data:
+    name: vehicle-tracking-artemis-data
+  artemis-logs:
+    name: vehicle-tracking-artemis-logs
+  rabbitmq-data:
+    name: vehicle-tracking-rabbitmq-data
+  mongodb-data:
+    name: vehicle-tracking-mongodb-data
+  prometheus-data:
+    name: vehicle-tracking-prometheus-data
+  grafana-data:
+    name: vehicle-tracking-grafana-data
+
+#===============================================================================
+# NETWORKS
+#===============================================================================
+networks:
+  vehicle-network:
+    name: vehicle-tracking-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

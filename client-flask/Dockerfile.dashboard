@@ -1,0 +1,30 @@
+#===============================================================================
+#  Dashboard - Real-time Monitoring Dashboard
+#===============================================================================
+
+FROM python:3.11-slim
+
+LABEL maintainer="Vehicle Tracking System"
+LABEL description="Real-time Dashboard"
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY client-flask/requirements-dashboard.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY client-flask/dashboard.py ./app.py
+COPY client-flask/templates/dashboard.html ./templates/
+
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 5001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -sf http://localhost:5001/health || exit 1
+
+CMD ["python", "app.py"]

@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: jms-bridge
+  
+  # Artemis JMS Configuration
+  artemis:
+    mode: native
+    broker-url: ${ARTEMIS_BROKER_URL:tcp://localhost:61616}
+    user: ${ARTEMIS_USER:admin}
+    password: ${ARTEMIS_PASSWORD:admin}
+  
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:admin}
+    password: ${SPRING_RABBITMQ_PASSWORD:admin}
+    virtual-host: /
+    connection-timeout: 30000
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+  
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://admin:admin123@localhost:27017/vehicle_tracking?authSource=admin}
+      auto-index-creation: true
+  
+  # Jackson Configuration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Custom Properties
+artemis:
+  broker-url: ${ARTEMIS_BROKER_URL:tcp://localhost:61616}
+  user: ${ARTEMIS_USER:admin}
+  password: ${ARTEMIS_PASSWORD:admin}
+
+jms:
+  queue: ${JMS_QUEUE:vehicle.events}
+
+rabbitmq:
+  exchange: ${RABBITMQ_EXCHANGE:vehicle-exchange}
+  queue: ${RABBITMQ_QUEUE:vehicle.events}
+  routing-key: ${RABBITMQ_ROUTING_KEY:vehicle.events}
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  server:
+    port: 9122
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.vehicletracking: DEBUG
+    org.springframework.jms: INFO
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

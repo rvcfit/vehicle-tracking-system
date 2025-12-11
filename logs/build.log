@@ -1,0 +1,277 @@
+time="2025-12-11T01:59:18-03:00" level=warning msg="/home/rvc/Documentos/Projetos/SRE/vehicle-tracking-system/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+#1 [internal] load local bake definitions
+#1 reading from stdin 3.27kB done
+#1 DONE 0.0s
+
+#2 [consumer-java internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.45kB done
+#2 DONE 0.0s
+
+#3 [jms-bridge internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.50kB done
+#3 DONE 0.0s
+
+#4 [client-flask internal] load build definition from Dockerfile
+#4 transferring dockerfile: 1.23kB done
+#4 DONE 0.0s
+
+#5 [jms-bridge internal] load metadata for docker.io/library/eclipse-temurin:17-jre-alpine
+#5 DONE 0.0s
+
+#6 [dashboard internal] load build definition from Dockerfile.dashboard
+#6 transferring dockerfile: 945B done
+#6 DONE 0.0s
+
+#7 [jms-bridge internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-17
+#7 DONE 0.0s
+
+#8 [artemis internal] load build definition from Dockerfile
+#8 transferring dockerfile: 2.31kB done
+#8 DONE 0.0s
+
+#9 [jms-bridge internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [client-flask internal] load metadata for docker.io/library/python:3.11-slim
+#10 DONE 0.0s
+
+#11 [consumer-node internal] load build definition from Dockerfile
+#11 transferring dockerfile: 964B done
+#11 DONE 0.0s
+
+#5 [artemis internal] load metadata for docker.io/library/eclipse-temurin:17-jre-alpine
+#5 DONE 0.0s
+
+#12 [consumer-node internal] load metadata for docker.io/library/node:20-alpine
+#12 DONE 0.0s
+
+#13 [client-flask  1/10] FROM docker.io/library/python:3.11-slim
+#13 DONE 0.0s
+
+#14 [artemis stage-1 1/6] FROM docker.io/library/eclipse-temurin:17-jre-alpine
+#14 DONE 0.0s
+
+#15 [jms-bridge build 1/7] FROM docker.io/library/maven:3.9-eclipse-temurin-17
+#15 DONE 0.0s
+
+#16 [consumer-node 1/8] FROM docker.io/library/node:20-alpine
+#16 DONE 0.0s
+
+#17 [artemis 2/7] RUN apk add --no-cache     curl     bash     libaio     xmlstarlet     && rm -rf /var/cache/apk/*
+#17 CACHED
+
+#18 [artemis 5/7] RUN sed -i 's/<acceptor name="artemis">tcp:\/\/0.0.0.0:61616/<acceptor name="artemis">tcp:\/\/0.0.0.0:61616?protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE/g'     /opt/artemis-instance/etc/broker.xml
+#18 CACHED
+
+#19 [artemis 3/7] RUN mkdir -p /opt &&     curl -fsSL -o /tmp/artemis.tar.gz     "https://archive.apache.org/dist/activemq/activemq-artemis/2.31.2/apache-artemis-2.31.2-bin.tar.gz" &&     tar xzf /tmp/artemis.tar.gz -C /opt &&     ln -s /opt/apache-artemis-2.31.2 /opt/artemis &&     rm /tmp/artemis.tar.gz
+#19 CACHED
+
+#20 [artemis 4/7] RUN cd /opt &&     /opt/artemis/bin/artemis create artemis-instance     --user admin     --password admin     --allow-anonymous     --http-host 0.0.0.0     --relax-jolokia     --queues vehicle.events,vehicle.alerts,vehicle.telemetry     --no-autotune
+#20 CACHED
+
+#21 [artemis 6/7] RUN addgroup -S artemis && adduser -S -G artemis artemis &&     chown -R artemis:artemis /opt/artemis-instance &&     chown -R artemis:artemis /opt/apache-artemis-2.31.2
+#21 CACHED
+
+#22 [artemis 7/7] WORKDIR /opt/artemis-instance
+#22 CACHED
+
+#23 [artemis] exporting to image
+#23 exporting layers done
+#23 writing image sha256:ece975e00f25a86c52e218a57687196330461805ae541b25f39f269d6c0184b4 done
+#23 naming to docker.io/library/vehicle-tracking-artemis done
+#23 DONE 0.0s
+
+#24 [client-flask internal] load build context
+#24 transferring context: 420B 0.0s done
+#24 DONE 0.1s
+
+#25 [consumer-node internal] load build context
+#25 transferring context: 7.84kB 0.0s done
+#25 DONE 0.0s
+
+#26 [dashboard internal] load build context
+#26 transferring context: 6.10kB 0.0s done
+#26 DONE 0.1s
+
+#27 [consumer-java internal] load build context
+#27 transferring context: 9.99kB 0.0s done
+#27 DONE 0.0s
+
+#28 [jms-bridge internal] load build context
+#28 transferring context: 19.51kB 0.0s done
+#28 DONE 0.0s
+
+#29 [artemis] resolving provenance for metadata file
+#29 DONE 0.0s
+
+#30 [dashboard 5/8] RUN pip install --no-cache-dir -r requirements.txt
+#30 CACHED
+
+#31 [dashboard 4/8] COPY client-flask/requirements-dashboard.txt ./requirements.txt
+#31 CACHED
+
+#32 [dashboard 3/8] RUN apt-get update &&     apt-get install -y --no-install-recommends curl &&     rm -rf /var/lib/apt/lists/*
+#32 CACHED
+
+#33 [dashboard 7/8] COPY client-flask/templates/dashboard.html ./templates/
+#33 CACHED
+
+#34 [dashboard 6/8] COPY client-flask/dashboard.py ./app.py
+#34 CACHED
+
+#35 [dashboard 8/8] RUN useradd -m appuser && chown -R appuser:appuser /app
+#35 CACHED
+
+#36 [consumer-node 3/8] RUN apk add --no-cache curl &&     rm -rf /var/cache/apk/*
+#36 CACHED
+
+#37 [consumer-node 4/8] COPY consumer-node/package*.json ./
+#37 CACHED
+
+#38 [consumer-node 2/8] WORKDIR /app
+#38 CACHED
+
+#39 [consumer-node 7/8] COPY consumer-node/index.js ./
+#39 CACHED
+
+#40 [consumer-node 5/8] RUN npm install --omit=dev
+#40 CACHED
+
+#41 [consumer-node 6/8] COPY consumer-node/src ./src
+#41 CACHED
+
+#42 [consumer-node 8/8] COPY proto ./proto
+#42 CACHED
+
+#43 [client-flask  5/10] RUN pip install --no-cache-dir -r requirements.txt
+#43 CACHED
+
+#44 [client-flask  3/10] RUN apt-get update &&     apt-get install -y --no-install-recommends     curl     && rm -rf /var/lib/apt/lists/*
+#44 CACHED
+
+#45 [client-flask  4/10] COPY client-flask/requirements.txt ./
+#45 CACHED
+
+#46 [client-flask  8/10] COPY client-flask/static ./static
+#46 CACHED
+
+#47 [client-flask  7/10] COPY client-flask/templates ./templates
+#47 CACHED
+
+#48 [client-flask  9/10] COPY proto ./proto
+#48 CACHED
+
+#49 [client-flask  6/10] COPY client-flask/app.py ./
+#49 CACHED
+
+#50 [dashboard  2/10] WORKDIR /app
+#50 CACHED
+
+#51 [client-flask 10/10] RUN useradd -m -s /bin/bash appuser &&     chown -R appuser:appuser /app
+#51 CACHED
+
+#52 [consumer-java build 5/7] RUN mvn dependency:go-offline -B
+#52 CACHED
+
+#53 [consumer-java build 6/7] COPY consumer-java/src ./src
+#53 CACHED
+
+#54 [consumer-java build 4/7] COPY consumer-java/pom.xml ./pom.xml
+#54 CACHED
+
+#55 [consumer-java build 7/7] RUN mvn clean package -DskipTests -B
+#55 CACHED
+
+#56 [consumer-java stage-1 5/6] COPY --from=build /build/target/*.jar app.jar
+#56 CACHED
+
+#57 [consumer-java build 3/7] COPY proto ./proto
+#57 CACHED
+
+#58 [consumer-java stage-1 6/6] RUN chown -R appuser:appgroup /app
+#58 CACHED
+
+#59 [jms-bridge build 2/7] WORKDIR /build
+#59 CACHED
+
+#60 [jms-bridge build 5/7] RUN mvn dependency:go-offline -B
+#60 CACHED
+
+#61 [jms-bridge build 7/7] RUN mvn clean package -DskipTests -B
+#61 CACHED
+
+#62 [jms-bridge stage-1 4/6] RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+#62 CACHED
+
+#63 [jms-bridge build 6/7] COPY jms-bridge/src ./src
+#63 CACHED
+
+#64 [jms-bridge build 4/7] COPY jms-bridge/pom.xml ./pom.xml
+#64 CACHED
+
+#65 [jms-bridge stage-1 3/6] RUN apk add --no-cache wget curl &&     rm -rf /var/cache/apk/*
+#65 CACHED
+
+#66 [jms-bridge build 3/7] COPY proto ./proto
+#66 CACHED
+
+#67 [jms-bridge stage-1 5/6] COPY --from=build /build/target/*.jar app.jar
+#67 CACHED
+
+#68 [jms-bridge stage-1 2/6] WORKDIR /app
+#68 CACHED
+
+#69 [jms-bridge stage-1 6/6] RUN chown -R appuser:appgroup /app
+#69 CACHED
+
+#70 [consumer-node] exporting to image
+#70 exporting layers done
+#70 writing image sha256:59087b9210bf419245d3bf82e0fe4400c5890826594ed7ebeed55a20490d8d88 done
+#70 naming to docker.io/library/vehicle-tracking-consumer-node done
+#70 DONE 0.0s
+
+#71 [client-flask] exporting to image
+#71 exporting layers done
+#71 writing image sha256:611c671f27f5e57ec9fb099d62f493fcf415bb124229a87c90816b3aba5db372 done
+#71 naming to docker.io/library/vehicle-tracking-client-flask done
+#71 DONE 0.0s
+
+#72 [dashboard] exporting to image
+#72 exporting layers done
+#72 writing image sha256:e69a0bf67494b2fc4bb7dbb07df9c6ddbcfeb533df119db1b70e52733c776d3c done
+#72 naming to docker.io/library/vehicle-tracking-dashboard done
+#72 DONE 0.0s
+
+#73 [jms-bridge] exporting to image
+#73 exporting layers done
+#73 writing image sha256:5cfe549db89d57d9782529497ea0caad2e20f721c1d4c6e4125cf10e2e5a944d done
+#73 naming to docker.io/library/vehicle-tracking-jms-bridge done
+#73 DONE 0.0s
+
+#74 [consumer-java] exporting to image
+#74 exporting layers done
+#74 writing image sha256:4a5f32cd6c16b420b316f4be9dccf3756bc6896655785369621ae2bcf35f7521 done
+#74 naming to docker.io/library/vehicle-tracking-consumer-java done
+#74 DONE 0.1s
+
+#75 [consumer-node] resolving provenance for metadata file
+#75 DONE 0.0s
+
+#76 [client-flask] resolving provenance for metadata file
+#76 DONE 0.0s
+
+#77 [jms-bridge] resolving provenance for metadata file
+#77 DONE 0.0s
+
+#78 [dashboard] resolving provenance for metadata file
+#78 DONE 0.0s
+
+#79 [consumer-java] resolving provenance for metadata file
+#79 DONE 0.0s
+ vehicle-tracking-jms-bridge  Built
+ vehicle-tracking-client-flask  Built
+ vehicle-tracking-dashboard  Built
+ vehicle-tracking-artemis  Built
+ vehicle-tracking-consumer-java  Built
+ vehicle-tracking-consumer-node  Built

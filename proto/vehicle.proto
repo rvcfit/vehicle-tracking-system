@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package vehicletracking;
+
+option java_package = "com.vehicletracking.proto";
+option java_outer_classname = "VehicleProto";
+
+// Vehicle Event Message
+message VehicleEvent {
+    string id = 1;
+    string license_plate = 2;
+    string vehicle_type = 3;
+    string event_type = 4;
+    
+    // Location
+    double latitude = 5;
+    double longitude = 6;
+    
+    // Movement
+    double speed = 7;
+    string direction = 8;
+    
+    // Metadata
+    string source = 9;
+    string processed_by = 10;
+    int64 timestamp = 11;
+    int64 processed_at = 12;
+    
+    map<string, string> metadata = 13;
+}
+
+// Vehicle Types
+enum VehicleType {
+    UNKNOWN = 0;
+    CAR = 1;
+    TRUCK = 2;
+    MOTORCYCLE = 3;
+    BUS = 4;
+    VAN = 5;
+}
+
+// Event Types
+enum EventType {
+    UNSPECIFIED = 0;
+    DETECTION = 1;
+    ENTRY = 2;
+    EXIT = 3;
+    SPEED_ALERT = 4;
+    PARKING = 5;
+}

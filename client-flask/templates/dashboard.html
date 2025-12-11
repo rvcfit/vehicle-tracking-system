@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Tracking Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #0a0a1a; color: #fff; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; padding: 30px; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+        .stat-value { font-size: 3rem; font-weight: bold; color: #00d9ff; }
+        .stat-label { color: #888; margin-top: 10px; }
+        .events-table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.02); border-radius: 12px; overflow: hidden; }
+        .events-table th, .events-table td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .events-table th { background: rgba(0,217,255,0.1); color: #00d9ff; }
+        .events-table tr:hover { background: rgba(255,255,255,0.03); }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; }
+        .badge-car { background: rgba(0,217,255,0.2); color: #00d9ff; }
+        .badge-truck { background: rgba(255,165,0,0.2); color: orange; }
+        .refresh { position: fixed; bottom: 20px; right: 20px; background: #00d9ff; color: #000; border: none; padding: 15px 25px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Vehicle Tracking Dashboard</h1>
+        <div class="stats">
+            <div class="stat-card"><div class="stat-value" id="totalEvents">-</div><div class="stat-label">Total Events</div></div>
+            <div class="stat-card"><div class="stat-value" id="processedJava">-</div><div class="stat-label">Processed (Java)</div></div>
+            <div class="stat-card"><div class="stat-value" id="processedNode">-</div><div class="stat-label">Processed (Node)</div></div>
+        </div>
+        <h2 style="margin-bottom:20px;color:#00d9ff;">Recent Events</h2>
+        <table class="events-table">
+            <thead><tr><th>License Plate</th><th>Type</th><th>Event</th><th>Source</th><th>Timestamp</th></tr></thead>
+            <tbody id="eventsBody"><tr><td colspan="5" style="text-align:center;color:#666;">Loading...</td></tr></tbody>
+        </table>
+    </div>
+    <button class="refresh" onclick="loadStats()">🔄 Refresh</button>
+    <script>
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('totalEvents').textContent = data.totalEvents || 0;
+                document.getElementById('processedJava').textContent = data.processedJava || 0;
+                document.getElementById('processedNode').textContent = data.processedNode || 0;
+                const tbody = document.getElementById('eventsBody');
+                if (data.recentEvents && data.recentEvents.length > 0) {
+                    tbody.innerHTML = data.recentEvents.map(e => `
+                        <tr>
+                            <td><strong>${e.licensePlate || '-'}</strong></td>
+                            <td><span class="badge badge-${(e.vehicleType||'car').toLowerCase()}">${e.vehicleType || '-'}</span></td>
+                            <td>${e.eventType || '-'}</td>
+                            <td>${e.source || '-'}</td>
+                            <td>${e.timestamp ? new Date(e.timestamp).toLocaleString() : '-'}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;">No events yet</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        loadStats();
+        setInterval(loadStats, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Tracking System</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e4;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 0;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+            color: #00d9ff;
+            font-size: 1.3rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 217, 255, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            margin-top: 10px;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .status.connected {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .status.disconnected {
+            background: rgba(255, 100, 100, 0.1);
+            border: 1px solid rgba(255, 100, 100, 0.3);
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status.connected .status-dot {
+            background: #00ff88;
+        }
+        
+        .status.disconnected .status-dot {
+            background: #ff6464;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+        
+        .result-item.success {
+            background: rgba(0, 255, 136, 0.1);
+            border-left: 3px solid #00ff88;
+        }
+        
+        .result-item.error {
+            background: rgba(255, 100, 100, 0.1);
+            border-left: 3px solid #ff6464;
+        }
+        
+        .quick-plates {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .quick-plate {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+        }
+        
+        .quick-plate:hover {
+            background: rgba(0, 217, 255, 0.2);
+            border-color: #00d9ff;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        footer a {
+            color: #00d9ff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 Vehicle Tracking</h1>
+            <p class="subtitle">Real-time Vehicle Event System</p>
+        </header>
+        
+        <div id="status" class="status disconnected">
+            <div class="status-dot"></div>
+            <span id="status-text">Checking connection...</span>
+        </div>
+        
+        <div class="card">
+            <h2>📡 Send Vehicle Event</h2>
+            
+            <form id="eventForm">
+                <div class="form-group">
+                    <label for="licensePlate">License Plate *</label>
+                    <input type="text" id="licensePlate" placeholder="ABC-1234" required>
+                    <div class="quick-plates">
+                        <span class="quick-plate" data-plate="ABC-1234">ABC-1234</span>
+                        <span class="quick-plate" data-plate="XYZ-9876">XYZ-9876</span>
+                        <span class="quick-plate" data-plate="TEST-0001">TEST-0001</span>
+                        <span class="quick-plate" data-plate="CAR-5555">CAR-5555</span>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vehicleType">Vehicle Type</label>
+                        <select id="vehicleType">
+                            <option value="CAR">Car</option>
+                            <option value="TRUCK">Truck</option>
+                            <option value="MOTORCYCLE">Motorcycle</option>
+                            <option value="BUS">Bus</option>
+                            <option value="VAN">Van</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventType">Event Type</label>
+                        <select id="eventType">
+                            <option value="DETECTION">Detection</option>
+                            <option value="ENTRY">Entry</option>
+                            <option value="EXIT">Exit</option>
+                            <option value="SPEED">Speed Alert</option>
+                            <option value="PARKING">Parking</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="latitude">Latitude</label>
+                        <input type="number" id="latitude" step="any" placeholder="-23.5505">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="longitude">Longitude</label>
+                        <input type="number" id="longitude" step="any" placeholder="-46.6333">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="speed">Speed (km/h)</label>
+                        <input type="number" id="speed" min="0" max="300" placeholder="60">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="direction">Direction</label>
+                        <select id="direction">
+                            <option value="">Not specified</option>
+                            <option value="N">North</option>
+                            <option value="S">South</option>
+                            <option value="E">East</option>
+                            <option value="W">West</option>
+                            <option value="NE">Northeast</option>
+                            <option value="NW">Northwest</option>
+                            <option value="SE">Southeast</option>
+                            <option value="SW">Southwest</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary">🚀 Send Event</button>
+                <button type="button" class="btn-secondary" onclick="sendRandom()">🎲 Send Random</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>📋 Recent Events</h2>
+            <div id="results" class="results">
+                <p style="color: #666; text-align: center;">No events sent yet</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Vehicle Tracking System v1.0.0</p>
+            <p>
+                <a href="/api/status">API Status</a> • 
+                <a href="/metrics">Metrics</a> • 
+                <a href="http://localhost:8161" target="_blank">Artemis Console</a> • 
+                <a href="http://localhost:15672" target="_blank">RabbitMQ</a> • 
+                <a href="http://localhost:3001" target="_blank">Grafana</a>
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        // Check connection status
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                const statusEl = document.getElementById('status');
+                const statusText = document.getElementById('status-text');
+                
+                if (data.artemis_connected) {
+                    statusEl.className = 'status connected';
+                    statusText.textContent = `Connected to Artemis (${data.artemis_host}:${data.artemis_port})`;
+                } else {
+                    statusEl.className = 'status disconnected';
+                    statusText.textContent = 'Disconnected from Artemis';
+                }
+            } catch (error) {
+                document.getElementById('status').className = 'status disconnected';
+                document.getElementById('status-text').textContent = 'Error checking status';
+            }
+        }
+        
+        // Send event
+        document.getElementById('eventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await sendEvent();
+        });
+        
+        async function sendEvent() {
+            const event = {
+                licensePlate: document.getElementById('licensePlate').value,
+                vehicleType: document.getElementById('vehicleType').value,
+                eventType: document.getElementById('eventType').value,
+                latitude: document.getElementById('latitude').value || null,
+                longitude: document.getElementById('longitude').value || null,
+                speed: document.getElementById('speed').value || null,
+                direction: document.getElementById('direction').value || null
+            };
+            
+            try {
+                const response = await fetch('/api/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(event)
+                });
+                
+                const data = await response.json();
+                addResult(data.success, data);
+                
+                if (data.success) {
+                    checkStatus();
+                }
+            } catch (error) {
+                addResult(false, { error: error.message });
+            }
+        }
+        
+        function sendRandom() {
+            const plates = ['ABC-1234', 'XYZ-9876', 'TEST-0001', 'CAR-5555', 'VAN-1111'];
+            const types = ['CAR', 'TRUCK', 'MOTORCYCLE', 'BUS'];
+            const events = ['DETECTION', 'ENTRY', 'EXIT', 'SPEED'];
+            
+            document.getElementById('licensePlate').value = plates[Math.floor(Math.random() * plates.length)];
+            document.getElementById('vehicleType').value = types[Math.floor(Math.random() * types.length)];
+            document.getElementById('eventType').value = events[Math.floor(Math.random() * events.length)];
+            document.getElementById('latitude').value = (-23.5 - Math.random() * 0.1).toFixed(6);
+            document.getElementById('longitude').value = (-46.6 - Math.random() * 0.1).toFixed(6);
+            document.getElementById('speed').value = Math.floor(Math.random() * 100) + 20;
+            
+            sendEvent();
+        }
+        
+        function addResult(success, data) {
+            const results = document.getElementById('results');
+            const firstP = results.querySelector('p');
+            if (firstP) firstP.remove();
+            
+            const item = document.createElement('div');
+            item.className = `result-item ${success ? 'success' : 'error'}`;
+            item.innerHTML = `
+                <strong>${success ? '✅' : '❌'} ${new Date().toLocaleTimeString()}</strong>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            results.insertBefore(item, results.firstChild);
+            
+            // Keep only last 10 results
+            while (results.children.length > 10) {
+                results.removeChild(results.lastChild);
+            }
+        }
+        
+        // Quick plate buttons
+        document.querySelectorAll('.quick-plate').forEach(el => {
+            el.addEventListener('click', () => {
+                document.getElementById('licensePlate').value = el.dataset.plate;
+            });
+        });
+        
+        // Initial status check
+        checkStatus();
+        setInterval(checkStatus, 10000);
+    </script>
+</body>
+</html>
